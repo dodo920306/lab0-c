@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "queue.h"
+#include "report.h"
 
 /* Notice: sometimes, Cppcheck would find the potential NULL pointer bugs,
  * but some of them cannot occur. You can suppress them by adding the
@@ -14,46 +15,157 @@
 /* Create an empty queue */
 struct list_head *q_new()
 {
+    // allocate memory for a list_head pointer called head.
+    struct list_head *head =
+        (struct list_head *) malloc(sizeof(struct list_head));
+    // Check if malloc() failed.
+    if (head) {
+        INIT_LIST_HEAD(head);
+        return head;
+    }
     return NULL;
 }
 
 /* Free all storage used by queue */
-void q_free(struct list_head *l) {}
+void q_free(struct list_head *l)
+{
+    // check if list valid and not empty
+    if (!l || list_empty(l)) {
+        free(l);
+        return;
+    }
+
+    // free element
+    element_t *entry, *safe;
+    list_for_each_entry_safe (entry, safe, l, list)
+        q_release_element(entry);
+
+    // free list
+    struct list_head *node, *safeNode;
+    list_for_each_safe (node, safeNode, l)
+        free(node);
+}
 
 /* Insert an element at head of queue */
 bool q_insert_head(struct list_head *head, char *s)
 {
+    // check if head is valid.
+    if (!head)
+        return false;
+
+    // allocate an element
+    element_t *new = (element_t *) malloc(sizeof(element_t));
+    // check if allocation is successful.
+    if (!new)
+        return false;
+
+    // allocate a string for the element->value
+    new->value = (char *) malloc((strlen(s) + 1) * sizeof(char));
+    if (!new->value) {
+        free(new);
+        return false;
+    }
+    // copy the string into the element
+    strncpy(new->value, s, strlen(s) + 1);
+
+    // insert this at head of queue
+    list_add(&new->list, head);
     return true;
 }
 
 /* Insert an element at tail of queue */
 bool q_insert_tail(struct list_head *head, char *s)
 {
+    // check if head is valid.
+    if (!head)
+        return false;
+
+    // allocate an element
+    element_t *new = (element_t *) malloc(sizeof(element_t));
+    // check if allocation is successful.
+    if (!new)
+        return false;
+
+    // allocate a string for the element->value
+    new->value = (char *) malloc((strlen(s) + 1) * sizeof(char));
+    if (!new->value) {
+        // free(node);
+        free(new);
+        return false;
+    }
+    // copy the string into the element
+    strncpy(new->value, s, strlen(s) + 1);
+
+    // insert this at tail of queue
+    list_add_tail(&new->list, head);
     return true;
 }
 
 /* Remove an element from head of queue */
 element_t *q_remove_head(struct list_head *head, char *sp, size_t bufsize)
 {
+    // check if head is valid.
+    if (!head || list_empty(head))
+        return NULL;
+
+    element_t *entry = list_first_entry(head, element_t, list);
+
+    if (sp && bufsize && entry) {
+        strncpy(sp, entry->value, bufsize - 1);
+        list_del(&entry->list);
+        return entry;
+    }
+
     return NULL;
 }
 
 /* Remove an element from tail of queue */
 element_t *q_remove_tail(struct list_head *head, char *sp, size_t bufsize)
 {
+    if (!head || list_empty(head))
+        return NULL;
+
+    element_t *entry = list_last_entry(head, element_t, list);
+    if (sp && bufsize && entry) {
+        strncpy(sp, entry->value, bufsize - 1);
+        list_del(&entry->list);
+        return entry;
+    }
+
     return NULL;
 }
 
 /* Return number of elements in queue */
 int q_size(struct list_head *head)
 {
-    return -1;
+    if (!head || list_empty(head))
+        return 0;
+
+    int len = 0;
+    struct list_head *li;
+
+    list_for_each (li, head)
+        len++;
+    return len;
 }
 
 /* Delete the middle node in queue */
 bool q_delete_mid(struct list_head *head)
 {
     // https://leetcode.com/problems/delete-the-middle-node-of-a-linked-list/
+    if (!head || list_empty(head))
+        return false;
+
+    struct list_head *rabbit = head->next, *turtle = head->next;
+    while (rabbit != head && rabbit->next != head) {
+        rabbit = rabbit->next->next;
+        turtle = turtle->next;
+    }
+    element_t *mid = list_entry(turtle, element_t, list);
+    // report(1, "%s\n", mid->value);
+    list_del(turtle);
+    q_release_element(mid);
+
     return true;
 }
 
@@ -61,6 +173,22 @@ bool q_delete_mid(struct list_head *head)
 bool q_delete_dup(struct list_head *head)
 {
     // https://leetcode.com/problems/remove-duplicates-from-sorted-list-ii/
+    if (!head || list_empty(head))
+        return false;
+
+    element_t *entry, *safe;
+    list_for_each_entry_safe (entry, safe, head, list) {
+        if (!strcmp(entry->value, safe->value)) {
+            list_del(&entry->list);
+            free(&entry->list);
+            q_release_element(entry);
+            entry = safe;
+            safe = list_entry(safe->list.next, element_t, list);
+            list_del(&entry->list);
+            free(&entry->list);
+            q_release_element(entry);
+        }
+    }
     return true;
 }
 
@@ -68,6 +196,9 @@ bool q_delete_dup(struct list_head *head)
 void q_swap(struct list_head *head)
 {
     // https://leetcode.com/problems/swap-nodes-in-pairs/
+    // if (!head || list_empty(head)) return 0;
+
+    // struct list_head *rabbit = head->next, *turtle = head->next->next;
 }
 
 /* Reverse elements in queue */
