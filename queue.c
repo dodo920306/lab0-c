@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -108,7 +109,7 @@ element_t *q_remove_head(struct list_head *head, char *sp, size_t bufsize)
     list_del(&entry->list);
 
     if (sp && bufsize) {
-        strncpy(sp, entry->value, bufsize);
+        strncpy(sp, entry->value, bufsize - 1);
         sp[bufsize - 1] = '\0';
         return entry;
     }
@@ -127,7 +128,7 @@ element_t *q_remove_tail(struct list_head *head, char *sp, size_t bufsize)
     list_del(&entry->list);
 
     if (sp && bufsize) {
-        strncpy(sp, entry->value, bufsize);
+        strncpy(sp, entry->value, bufsize - 1);
         sp[bufsize - 1] = '\0';
         return entry;
     }
@@ -268,27 +269,31 @@ void q_reverseK(struct list_head *head, int k)
         safe->prev = tmp;
         last = tmp;
         node = safe;
+        // element_t *el;
+        // list_for_each_entry(el, head, list) {
+        //     report(1, "%s", el->value);
+        // }
+        // report(1, "---");
     }
 }
 
 struct list_head *q_mergeTwo(struct list_head *q1, struct list_head *q2)
 {
-    if (!q1)
-        return q2;
-    if (!q2)
-        return q1;
-
-    element_t *e1 = list_entry(q1, element_t, list);
-    element_t *e2 = list_entry(q2, element_t, list);
-
-    if (strcmp(e1->value, e2->value) <= 0) {
-        q1->next = q_mergeTwo(q1->next, q2);
-        return q1;
-    } else {
-        q2->next = q_mergeTwo(q1, q2->next);
-        return q2;
+    struct list_head *prehead = NULL, **indirect = &prehead;
+    while (q1 && q2) {
+        element_t *e1 = list_entry(q1, element_t, list);
+        element_t *e2 = list_entry(q2, element_t, list);
+        if (strcmp(e1->value, e2->value) <= 0) {
+            *indirect = q1;
+            q1 = q1->next;
+        } else {
+            *indirect = q2;
+            q2 = q2->next;
+        }
+        indirect = &(*indirect)->next;
     }
-    return NULL;
+    *indirect = (struct list_head *) ((uintptr_t) q1 | (uintptr_t) q2);
+    return prehead;
 }
 
 struct list_head *q_mergeSort(struct list_head *head)
