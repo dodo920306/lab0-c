@@ -204,10 +204,10 @@ void q_swap(struct list_head *head)
     // https://leetcode.com/problems/swap-nodes-in-pairs/
     if (!head || !head->next || !head->next->next)
         return;
-    struct list_head *x, *y, *z = NULL;
+    struct list_head *x, *y, *z = head;
     x = head->next;
     y = head->next->next;
-    if (head->next->next->next != NULL) {
+    if (head->next->next->next != head) {
         z = head->next->next->next;
     }
     head->next = y;
