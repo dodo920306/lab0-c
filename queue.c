@@ -63,7 +63,7 @@ bool q_insert_head(struct list_head *head, char *s)
         return false;
     }
     // copy the string into the element
-    strncpy(new->value, s, len);
+    memcpy(new->value, s, len);
 
     // insert this at head of queue
     list_add(&new->list, head);
@@ -91,7 +91,7 @@ bool q_insert_tail(struct list_head *head, char *s)
         return false;
     }
     // copy the string into the element
-    strncpy(new->value, s, len);
+    memcpy(new->value, s, len);
 
     // insert this at tail of queue
     list_add_tail(&new->list, head);
@@ -109,7 +109,7 @@ element_t *q_remove_head(struct list_head *head, char *sp, size_t bufsize)
     list_del(&entry->list);
 
     if (sp && bufsize) {
-        strncpy(sp, entry->value, bufsize - 1);
+        memcpy(sp, entry->value, bufsize - 1);
         sp[bufsize - 1] = '\0';
         return entry;
     }
@@ -128,7 +128,7 @@ element_t *q_remove_tail(struct list_head *head, char *sp, size_t bufsize)
     list_del(&entry->list);
 
     if (sp && bufsize) {
-        strncpy(sp, entry->value, bufsize - 1);
+        memcpy(sp, entry->value, bufsize - 1);
         sp[bufsize - 1] = '\0';
         return entry;
     }
@@ -162,10 +162,8 @@ bool q_delete_mid(struct list_head *head)
         rabbit = rabbit->next->next;
         turtle = turtle->next;
     }
-    element_t *mid = list_entry(turtle, element_t, list);
-    // report(1, "%s\n", mid->value);
     list_del(turtle);
-    q_release_element(mid);
+    q_release_element(list_entry(turtle, element_t, list));
 
     return true;
 }
@@ -192,9 +190,8 @@ bool q_delete_dup(struct list_head *head)
                 node = safe;
                 safe = safe->next;
             }
-            el = list_entry(node, element_t, list);
             list_del(node);
-            q_release_element(el);
+            q_release_element(list_entry(node, element_t, list));
             free(dup);
         }
     }
@@ -234,6 +231,8 @@ void q_swap(struct list_head *head)
 /* Reverse elements in queue */
 void q_reverse(struct list_head *head)
 {
+    if (list_is_singular(head))
+        return;
     struct list_head *tmp;
     for (struct list_head *node = head->next, *safe; node != head;
          node = safe) {
@@ -269,11 +268,6 @@ void q_reverseK(struct list_head *head, int k)
         safe->prev = tmp;
         last = tmp;
         node = safe;
-        // element_t *el;
-        // list_for_each_entry(el, head, list) {
-        //     report(1, "%s", el->value);
-        // }
-        // report(1, "---");
     }
 }
 
@@ -314,15 +308,14 @@ struct list_head *q_mergeSort(struct list_head *head)
 
     head = q_mergeSort(head);
     fast = q_mergeSort(fast);
-    head = q_mergeTwo(head, fast);
 
-    return head;
+    return q_mergeTwo(head, fast);
 }
 
 /* Sort elements of queue in ascending order */
 void q_sort(struct list_head *head)
 {
-    if (!head || list_empty(head))
+    if (!head || list_empty(head) || list_is_singular(head))
         return;
     struct list_head *tail = head->prev;
     head->prev = NULL;
@@ -346,12 +339,6 @@ void q_sort(struct list_head *head)
         it = it->next;
     }
     cur->prev = it;
-    cur = head->prev;
-    while (cur != head) {
-        if (!cur)
-            return;
-        cur = cur->prev;
-    }
 
     return;
 }
@@ -430,3 +417,59 @@ int q_merge(struct list_head *head)
 
     return q_size(safe->q);
 }
+
+// /* Merge all the queues into one sorted queue, which is in ascending order */
+// int q_merge(struct list_head *head)
+// {
+//     // https://leetcode.com/problems/merge-k-sorted-lists/
+//     queue_contex_t *entry = list_entry(head->next, queue_contex_t, chain),
+//     *safe = list_entry(head->next->next, queue_contex_t, chain); element_t
+//     *el; while (!list_is_singular(head)) {
+//         while (true) {
+//             struct list_head *tail = entry->q->prev;
+//             entry->q->prev = NULL;
+//             tail->next = NULL;
+
+//             tail = safe->q->prev;
+//             safe->q->prev = NULL;
+//             tail->next = NULL;
+
+//             safe->q->next = q_mergeTwo(entry->q->next, safe->q->next);
+
+//             struct list_head *node = safe->q->next;
+//             while (node) {
+//                 tail = node;
+//                 node = node->next;
+//             }
+//             tail->next = safe->q;
+//             safe->q->prev = tail;
+
+//             struct list_head *it = safe->q, *cur = safe->q->next;
+//             while (cur != safe->q) {
+//                 if (!cur)
+//                     return 0;
+//                 cur->prev = it;
+//                 cur = cur->next;
+//                 it = it->next;
+//             }
+//             cur->prev = it;
+
+//             list_del_init(&entry->chain);
+//             report(1, "gg");
+//             list_for_each_entry(el, safe->q, list) {
+//                 report(1, "%s", el->value);
+//             }
+//             if (safe->chain.next != head && safe->chain.next->next != head) {
+//                 entry = list_entry(safe->chain.next, queue_contex_t, chain);
+//                 safe = list_entry(entry->chain.next, queue_contex_t, chain);
+//             }
+//             else {
+//                 break;
+//             }
+//         }
+//     }
+//     report(1, "gg");
+//     q_sort(safe->q);
+
+//     return q_size(safe->q);
+// }
